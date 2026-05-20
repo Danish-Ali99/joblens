@@ -34,17 +34,22 @@ roles like this one, or look at a different level / domain?
 Be honest. The candidate has paid you for honest counsel, not flattery."""
 
 
+def _excerpt(text, max_chars: int = 500) -> str:
+    """Keep only the first slice of each specialist's output so the
+    synthesizer's prompt stays small and the call stays fast."""
+    return (text or "N/A")[:max_chars]
+
+
 def synthesizer_agent(state):
     llm = get_llm(temperature=0.4)
     context = (
-        f"Resume:\n{state['resume_text']}\n\n"
-        f"Job Description:\n{state['job_description']}\n\n"
+        f"Job Description:\n{state['job_description'][:800]}\n\n"
         "---\n\n"
-        f"Match Analyst output:\n{state.get('match_analysis', 'N/A')}\n\n"
-        f"Skills Gap Analyst output:\n{state.get('skills_gap', 'N/A')}\n\n"
-        f"Resume Tailor output:\n{state.get('resume_tailoring', 'N/A')}\n\n"
-        f"Interview Coach output:\n{state.get('interview_questions', 'N/A')}\n\n"
-        f"Cover Letter Writer output:\n{state.get('cover_letter', 'N/A')}\n"
+        f"Match Analyst (excerpt):\n{_excerpt(state.get('match_analysis'))}\n\n"
+        f"Skills Gap (excerpt):\n{_excerpt(state.get('skills_gap'))}\n\n"
+        f"Resume Tailor (excerpt):\n{_excerpt(state.get('resume_tailoring'))}\n\n"
+        f"Interview Coach (excerpt):\n{_excerpt(state.get('interview_questions'))}\n\n"
+        f"Cover Letter (excerpt):\n{_excerpt(state.get('cover_letter'))}\n"
     )
     response = llm.invoke([
         SystemMessage(content=SYSTEM),

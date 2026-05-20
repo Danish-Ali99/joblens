@@ -9,7 +9,7 @@ full resume into every prompt.
 """
 import os
 
-MAX_TOKENS = 400
+MAX_TOKENS = 350
 
 
 def get_llm(temperature: float = 0.6):
