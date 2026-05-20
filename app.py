@@ -159,19 +159,10 @@ h1, h2, h3, h4, h5 {
     pointer-events: none;
     z-index: 0;
 }
-.stApp::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-}
 .main .block-container {
+    padding-top: 2rem;
     position: relative;
     z-index: 1;
-    padding-top: 2rem;
 }
 
 /* Hero */
@@ -394,9 +385,8 @@ footer { visibility: hidden; }
     to { opacity: 1; transform: translateY(0); }
 }
 
-[data-testid="stVerticalBlock"] > [data-testid="element-container"] {
-    animation: fadeInUp 0.45s ease-out both;
-}
+/* (Removed aggressive per-element animation that left content stuck at
+   opacity 0 in some browsers. Animation kept only on the hero.) */
 </style>
 """
 
