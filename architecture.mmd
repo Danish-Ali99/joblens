@@ -1,0 +1,28 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	matcher(matcher)
+	gap(gap)
+	tailor(tailor)
+	interviewer(interviewer)
+	cover_letter(cover_letter)
+	synthesizer(synthesizer)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> cover_letter;
+	__start__ --> gap;
+	__start__ --> interviewer;
+	__start__ --> matcher;
+	__start__ --> tailor;
+	cover_letter --> synthesizer;
+	gap --> synthesizer;
+	interviewer --> synthesizer;
+	matcher --> synthesizer;
+	tailor --> synthesizer;
+	synthesizer --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
