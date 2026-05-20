@@ -1,6 +1,11 @@
 """Resume Tailor — suggests specific edits to the resume for this JD."""
 from langchain_core.messages import SystemMessage, HumanMessage
-from .base import get_llm
+from .base import get_llm, retrieve_resume_context
+
+RETRIEVAL_QUERY = (
+    "experience projects bullets accomplishments achievements impact summary "
+    "internships work"
+)
 
 
 SYSTEM = """You are an expert resume editor specializing in tailoring resumes
@@ -34,11 +39,12 @@ Never invent experience the candidate doesn't have."""
 
 
 def tailor_agent(state):
+    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=6)
     llm = get_llm(temperature=0.5)
     response = llm.invoke([
         SystemMessage(content=SYSTEM),
         HumanMessage(content=(
-            f"Resume:\n{state['resume_text']}\n\n"
+            f"Resume (top-k relevant sections via RAG):\n{resume_context}\n\n"
             f"Job Description:\n{state['job_description']}"
         )),
     ])

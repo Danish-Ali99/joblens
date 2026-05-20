@@ -1,6 +1,11 @@
 """Match Analyst — scores resume vs job description and explains why."""
 from langchain_core.messages import SystemMessage, HumanMessage
-from .base import get_llm
+from .base import get_llm, retrieve_resume_context
+
+RETRIEVAL_QUERY = (
+    "candidate skills experience qualifications technical achievements education "
+    "projects fit match"
+)
 
 
 SYSTEM = """You are a senior technical recruiter scoring resume-to-job-description fit.
@@ -30,11 +35,12 @@ Be honest and specific. Generic feedback is useless."""
 
 
 def matcher_agent(state):
+    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=5)
     llm = get_llm(temperature=0.4)
     response = llm.invoke([
         SystemMessage(content=SYSTEM),
         HumanMessage(content=(
-            f"Resume:\n{state['resume_text']}\n\n"
+            f"Resume (top-k relevant sections via RAG):\n{resume_context}\n\n"
             f"Job Description:\n{state['job_description']}"
         )),
     ])

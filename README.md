@@ -21,8 +21,9 @@ and produces a complete application package in ~5 seconds:
 - A **drafted, ready-to-send cover letter**
 - A **24-hour action plan** synthesizing everything into next steps
 
-Built with **LangGraph**, **LangChain**, **pypdf**, and **Streamlit** — pluggable
-LLM backend (Groq free tier or OpenAI).
+Built with **LangGraph**, **LangChain**, a **RAG retrieval layer** (sentence-
+transformers + FAISS), **pypdf**, and **Streamlit** — pluggable LLM backend
+(Groq free tier or OpenAI).
 
 ---
 
@@ -30,17 +31,26 @@ LLM backend (Groq free tier or OpenAI).
 
 ![Architecture diagram](architecture.png)
 
-Five specialist agents — **Match Analyst, Skills Gap, Resume Tailor, Interview
-Coach, and Cover Letter Writer** — run **in parallel** from the same inputs.
+**RAG layer:** The resume is chunked into paragraph-level pieces, embedded
+with `sentence-transformers/all-MiniLM-L6-v2`, and indexed in FAISS. Each
+specialist agent retrieves only the **top-k chunks most relevant to its role**
+(e.g., the Skills Gap agent retrieves skills/education sections, the Cover
+Letter Writer retrieves motivation/summary sections). The job description is
+passed in full.
+
+**Multi-agent layer:** Five specialist agents — **Match Analyst, Skills Gap,
+Resume Tailor, Interview Coach, and Cover Letter Writer** — run **in parallel**.
 A **Synthesizer** waits for all five and merges their outputs into a single
 prioritized action plan.
 
-The pattern is a classic LangGraph **fan-out / fan-in**: all specialists are
-scheduled concurrently, the synthesizer is a join node that only triggers
-after every parent has written to shared state.
+The orchestration pattern is a classic LangGraph **fan-out / fan-in**: all
+specialists are scheduled concurrently, the synthesizer is a join node that
+only triggers after every parent has written to shared state.
 
 ## Features
 
+- **RAG retrieval over chunked resume sections** — sentence-transformers + FAISS
+  embed each chunk and each agent retrieves only what's relevant to its role
 - **5 role-based agents** + Synthesizer, each with a tightly engineered system prompt
 - **Parallel execution** via LangGraph's stateful graph (real concurrency)
 - **PDF resume parsing** with `pypdf`
@@ -56,6 +66,8 @@ after every parent has written to shared state.
 | Orchestration | LangGraph                                         |
 | LLM (free)    | Groq — `llama-3.1-8b-instant`                     |
 | LLM (paid)    | OpenAI — `gpt-4o` / `gpt-4o-mini`                 |
+| Embeddings    | sentence-transformers `all-MiniLM-L6-v2`          |
+| Vector store  | FAISS (cosine similarity)                         |
 | Framework     | LangChain                                         |
 | PDF parsing   | pypdf                                             |
 | UI            | Streamlit                                         |
@@ -92,7 +104,7 @@ For HF Spaces, the `GROQ_API_KEY` goes in **Settings → Variables and secrets**
 joblens/
 ├── agents/
 │   ├── __init__.py
-│   ├── base.py            # shared LLM factory
+│   ├── base.py            # shared LLM factory + RAG-retrieval helper
 │   ├── matcher.py         # Match Analyst
 │   ├── gap.py             # Skills Gap Analyst
 │   ├── tailor.py          # Resume Tailor
@@ -105,7 +117,8 @@ joblens/
 │   └── workflow.py        # LangGraph fan-out / fan-in DAG
 ├── utils/
 │   ├── __init__.py
-│   └── pdf.py             # pypdf-based resume extraction
+│   ├── pdf.py             # pypdf-based resume extraction
+│   └── retriever.py       # sentence-transformers + FAISS RAG retriever
 ├── app.py                 # Streamlit UI
 ├── requirements.txt
 ├── .env.example
@@ -117,12 +130,19 @@ joblens/
 1. The user uploads their resume PDF. `pypdf` extracts plain text (multi-page,
    whitespace-normalized).
 2. They paste a target job description (or click a sample).
-3. LangGraph initializes shared state with the resume text and JD.
-4. From the `__start__` node, LangGraph fans out to **5 specialist agents in
-   parallel** — each writes its own field to shared state.
-5. Once all 5 complete, the **Synthesizer** runs once and produces the action
+3. **RAG indexing:** the resume is chunked by paragraph, each chunk is embedded
+   with `sentence-transformers/all-MiniLM-L6-v2` (384-dim), and the embeddings
+   are loaded into a FAISS index (cosine similarity).
+4. LangGraph initializes shared state with the resume text, JD, and the FAISS
+   retriever.
+5. From the `__start__` node, LangGraph fans out to **5 specialist agents in
+   parallel**. Each agent issues a role-specific retrieval query — e.g., the
+   Skills Gap agent searches for "skills technologies tools certifications",
+   the Cover Letter Writer searches for "summary motivation career goals" —
+   and only the **top-k retrieved chunks** are placed into its prompt.
+6. Once all 5 complete, the **Synthesizer** runs once and produces the action
    plan, with full context of every specialist's output.
-6. The UI streams progress as each agent finishes and renders the action plan
+7. The UI streams progress as each agent finishes and renders the action plan
    at the top with individual specialist reports in tabs.
 
 ## Extending It

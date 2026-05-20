@@ -1,7 +1,11 @@
-"""Shared LLM factory used by every agent.
+"""Shared LLM factory and RAG-retrieval helper used by every agent.
 
 Provider is selected via the ``LLM_PROVIDER`` env var (``groq`` or ``openai``).
 ``max_tokens`` is capped to keep the parallel pipeline under ~5 seconds.
+
+``retrieve_resume_context`` is the RAG entry point each agent uses to fetch
+only the resume chunks most relevant to its role — instead of stuffing the
+full resume into every prompt.
 """
 import os
 
@@ -24,3 +28,19 @@ def get_llm(temperature: float = 0.6):
     raise ValueError(
         f"Unknown LLM_PROVIDER={provider!r}. Use 'groq' or 'openai'."
     )
+
+
+def retrieve_resume_context(state, query: str, k: int = 4) -> str:
+    """RAG: return top-k resume chunks for an agent's role.
+
+    Falls back to the full resume text if the retriever is missing or fails —
+    keeps the demo robust on unusual resume formats.
+    """
+    retriever = state.get("retriever")
+    if retriever is None:
+        return state["resume_text"]
+    try:
+        chunks = retriever.retrieve(query, k=k)
+        return "\n\n---\n\n".join(chunks)
+    except Exception:
+        return state["resume_text"]

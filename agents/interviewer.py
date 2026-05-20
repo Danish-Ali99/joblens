@@ -1,6 +1,11 @@
 """Interview Coach — predicts likely interview questions for this JD."""
 from langchain_core.messages import SystemMessage, HumanMessage
-from .base import get_llm
+from .base import get_llm, retrieve_resume_context
+
+RETRIEVAL_QUERY = (
+    "projects experience technical work deep accomplishments responsibilities "
+    "challenges impact"
+)
 
 
 SYSTEM = """You are an interview coach who has seen thousands of interviews
@@ -33,11 +38,12 @@ project, technology, or claim from THIS resume that the interviewer will hit."""
 
 
 def interviewer_agent(state):
+    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=5)
     llm = get_llm(temperature=0.6)
     response = llm.invoke([
         SystemMessage(content=SYSTEM),
         HumanMessage(content=(
-            f"Resume:\n{state['resume_text']}\n\n"
+            f"Resume (top-k relevant sections via RAG):\n{resume_context}\n\n"
             f"Job Description:\n{state['job_description']}"
         )),
     ])

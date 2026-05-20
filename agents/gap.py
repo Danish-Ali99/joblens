@@ -1,6 +1,11 @@
 """Skills Gap Analyst — pinpoints missing skills and ranks by JD priority."""
 from langchain_core.messages import SystemMessage, HumanMessage
-from .base import get_llm
+from .base import get_llm, retrieve_resume_context
+
+RETRIEVAL_QUERY = (
+    "skills technologies tools certifications education stack frameworks "
+    "languages programming"
+)
 
 
 SYSTEM = """You are a skills-gap analyst. Compare the candidate's resume against
@@ -28,11 +33,12 @@ Be specific about exact technologies and concepts. No generic advice."""
 
 
 def gap_agent(state):
+    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=5)
     llm = get_llm(temperature=0.5)
     response = llm.invoke([
         SystemMessage(content=SYSTEM),
         HumanMessage(content=(
-            f"Resume:\n{state['resume_text']}\n\n"
+            f"Resume (top-k relevant sections via RAG):\n{resume_context}\n\n"
             f"Job Description:\n{state['job_description']}"
         )),
     ])

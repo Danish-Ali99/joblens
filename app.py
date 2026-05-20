@@ -10,6 +10,7 @@ load_dotenv()
 from graph.workflow import build_graph
 from graph.state import JobLensState
 from utils.pdf import extract_resume_text
+from utils.retriever import ResumeRetriever
 
 
 REPO_URL = "https://github.com/Danish-Ali99/joblens"
@@ -97,8 +98,9 @@ st.session_state.setdefault("resume_text", "")
 
 st.title("🔍 JobLens — AI Job Intelligence")
 st.caption(
-    "Upload your resume + a job description. 5 specialist AI agents review them in parallel, "
-    "and a Synthesizer compiles a 24-hour action plan. Built with LangGraph + LangChain."
+    "Upload your resume + a job description. 5 specialist AI agents review them in parallel "
+    "using RAG over chunked resume sections, then a Synthesizer compiles a 24-hour action plan. "
+    "Built with LangGraph + LangChain + sentence-transformers + FAISS."
 )
 
 # --- Sidebar ---
@@ -210,9 +212,24 @@ if run:
         os.environ["OPENAI_API_KEY"] = api_key
         os.environ["OPENAI_MODEL"] = model
 
+    with st.spinner("Building RAG index for your resume..."):
+        try:
+            retriever = ResumeRetriever(resume_text)
+            st.caption(
+                f"📚 RAG index built — {retriever.num_chunks()} resume chunks embedded "
+                "with sentence-transformers + FAISS. Each agent retrieves only the "
+                "top-k relevant chunks for its role."
+            )
+        except Exception as e:
+            st.warning(
+                f"RAG index couldn't build ({e}); falling back to full-resume context."
+            )
+            retriever = None
+
     initial: JobLensState = {
         "resume_text": resume_text,
         "job_description": jd,
+        "retriever": retriever,
         "match_analysis": None,
         "skills_gap": None,
         "resume_tailoring": None,

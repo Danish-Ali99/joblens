@@ -1,6 +1,11 @@
 """Cover Letter Writer — drafts a tailored cover letter."""
 from langchain_core.messages import SystemMessage, HumanMessage
-from .base import get_llm
+from .base import get_llm, retrieve_resume_context
+
+RETRIEVAL_QUERY = (
+    "summary motivation interests career goals projects education leadership "
+    "experience accomplishments"
+)
 
 
 SYSTEM = """You are a senior career coach who writes cover letters that get
@@ -26,11 +31,12 @@ explanation. Just the letter as it would be pasted into an email."""
 
 
 def cover_letter_agent(state):
+    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=6)
     llm = get_llm(temperature=0.7)
     response = llm.invoke([
         SystemMessage(content=SYSTEM),
         HumanMessage(content=(
-            f"Resume:\n{state['resume_text']}\n\n"
+            f"Resume (top-k relevant sections via RAG):\n{resume_context}\n\n"
             f"Job Description:\n{state['job_description']}"
         )),
     ])
