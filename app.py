@@ -96,12 +96,318 @@ st.set_page_config(
 st.session_state.setdefault("jd_text", "")
 st.session_state.setdefault("resume_text", "")
 
-st.title("🔍 JobLens — AI Job Intelligence")
-st.caption(
-    "Upload your resume + a job description. 5 specialist AI agents review them in parallel "
-    "using RAG over chunked resume sections, then a Synthesizer compiles a 24-hour action plan. "
-    "Built with LangGraph + LangChain + BM25 retrieval."
-)
+
+_CUSTOM_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    --bg-primary: #0a0a0f;
+    --bg-elev-1: rgba(255, 255, 255, 0.025);
+    --bg-elev-2: rgba(255, 255, 255, 0.045);
+    --border-soft: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.12);
+    --text-primary: #f5f5f7;
+    --text-secondary: #9ca3af;
+    --text-tertiary: #6b7280;
+    --accent-1: #8b5cf6;
+    --accent-2: #06b6d4;
+    --accent-gradient: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+    --success: #10b981;
+    --warn: #f59e0b;
+    --error: #f43f5e;
+}
+
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text-primary);
+}
+
+h1, h2, h3, h4, h5 {
+    font-family: 'Space Grotesk', 'Inter', sans-serif !important;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+}
+
+/* App background with ambient glow */
+.stApp {
+    background: var(--bg-primary) !important;
+    position: relative;
+}
+.stApp::before {
+    content: '';
+    position: fixed;
+    top: -300px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1000px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(139, 92, 246, 0.12) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+}
+.stApp::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+}
+.main .block-container {
+    position: relative;
+    z-index: 1;
+    padding-top: 2rem;
+}
+
+/* Hero */
+.hero {
+    margin: 0.5rem 0 2rem 0;
+    animation: heroFadeIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.hero-title {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 700;
+    font-size: 3.6rem;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    background: var(--accent-gradient);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 12s ease-in-out infinite;
+    margin: 0;
+}
+.hero-subtitle {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-size: 1.4rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    margin: 0.25rem 0 0.5rem;
+    letter-spacing: -0.01em;
+}
+.hero-tagline {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 720px;
+    line-height: 1.55;
+}
+.hero-chips {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-elev-1);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+}
+.chip:hover {
+    border-color: var(--accent-1);
+    color: var(--text-primary);
+}
+
+/* Section subheadings */
+[data-testid="stMarkdownContainer"] h2 {
+    font-size: 1.15rem !important;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Buttons */
+.stButton button {
+    background: var(--bg-elev-1) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: 12px !important;
+    padding: 0.55rem 1.2rem !important;
+    font-weight: 500 !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: all 0.18s ease !important;
+    backdrop-filter: blur(10px);
+}
+.stButton button:hover {
+    background: var(--bg-elev-2) !important;
+    border-color: var(--accent-1) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+}
+.stButton button[kind="primary"] {
+    background: var(--accent-gradient) !important;
+    color: white !important;
+    border: none !important;
+    font-weight: 600 !important;
+    padding: 0.7rem 1.6rem !important;
+    box-shadow: 0 4px 18px rgba(139, 92, 246, 0.35);
+}
+.stButton button[kind="primary"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(139, 92, 246, 0.5);
+}
+
+/* Inputs */
+.stTextInput input, .stTextArea textarea {
+    background: var(--bg-elev-1) !important;
+    border: 1px solid var(--border-soft) !important;
+    border-radius: 12px !important;
+    color: var(--text-primary) !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: all 0.18s ease;
+    backdrop-filter: blur(10px);
+}
+.stTextInput input:focus, .stTextArea textarea:focus {
+    border-color: var(--accent-1) !important;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18) !important;
+}
+
+/* Selectbox */
+.stSelectbox > div > div {
+    background: var(--bg-elev-1) !important;
+    border: 1px solid var(--border-soft) !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(10px);
+}
+
+/* File uploader */
+[data-testid="stFileUploadDropzone"] {
+    background: var(--bg-elev-1) !important;
+    border: 2px dashed var(--border-strong) !important;
+    border-radius: 16px !important;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+[data-testid="stFileUploadDropzone"]:hover {
+    border-color: var(--accent-1) !important;
+    background: rgba(139, 92, 246, 0.04) !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0.4rem;
+    background: transparent !important;
+}
+.stTabs [data-baseweb="tab"] {
+    background: var(--bg-elev-1) !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--border-soft) !important;
+    padding: 0.4rem 1rem !important;
+    color: var(--text-secondary) !important;
+    transition: all 0.18s ease !important;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    background: var(--bg-elev-2) !important;
+    color: var(--text-primary) !important;
+}
+.stTabs [aria-selected="true"] {
+    background: var(--accent-gradient) !important;
+    border-color: transparent !important;
+    color: white !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background: rgba(10, 10, 15, 0.85) !important;
+    border-right: 1px solid var(--border-soft);
+    backdrop-filter: blur(20px);
+}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2 {
+    color: var(--text-primary);
+    font-size: 1rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary) !important;
+    margin-top: 1rem;
+}
+
+/* Alerts / status */
+.stAlert {
+    border-radius: 12px !important;
+    border: 1px solid var(--border-soft) !important;
+    backdrop-filter: blur(10px);
+}
+
+/* Progress bar */
+.stProgress > div > div {
+    background: var(--accent-gradient) !important;
+    border-radius: 999px;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+}
+
+/* Code / pre blocks */
+pre, code, .stCode {
+    font-family: 'JetBrains Mono', 'Courier New', monospace !important;
+    background: var(--bg-elev-1) !important;
+    border: 1px solid var(--border-soft) !important;
+    border-radius: 10px !important;
+}
+
+/* Captions */
+.stCaption, [data-testid="stCaption"] {
+    color: var(--text-secondary) !important;
+    font-size: 0.9rem;
+}
+
+/* Streamlit branding */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+[data-testid="stToolbar"] { visibility: hidden; }
+[data-testid="stDecoration"] { display: none; }
+
+/* Animations */
+@keyframes heroFadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+[data-testid="stVerticalBlock"] > [data-testid="element-container"] {
+    animation: fadeInUp 0.45s ease-out both;
+}
+</style>
+"""
+
+_HERO_HTML = """
+<div class="hero">
+  <h1 class="hero-title">JobLens</h1>
+  <div class="hero-subtitle">AI Job Intelligence</div>
+  <p class="hero-tagline">
+    Upload your resume and any job description. Five specialist agents review them in
+    parallel, BM25 retrieves the right resume sections per agent, and a synthesizer
+    compiles your 24-hour application plan in seconds.
+  </p>
+  <div class="hero-chips">
+    <span class="chip">LangGraph</span>
+    <span class="chip">LangChain</span>
+    <span class="chip">BM25 RAG</span>
+    <span class="chip">Groq · llama 3.1 8b</span>
+    <span class="chip">Streamlit</span>
+  </div>
+</div>
+"""
+
+st.markdown(_CUSTOM_CSS, unsafe_allow_html=True)
+st.markdown(_HERO_HTML, unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar:
@@ -188,7 +494,7 @@ with col_jd:
         key="jd_text",
     )
 
-run = st.button("🔍 Analyze fit", type="primary")
+run = st.button("Analyze fit  →", type="primary")
 
 if run:
     if not api_key:
