@@ -8,17 +8,11 @@ only the resume chunks most relevant to its role — instead of stuffing the
 full resume into every prompt.
 """
 import os
-import random
-import time
 
-MAX_TOKENS = 500
+MAX_TOKENS = 400
 
 
 def get_llm(temperature: float = 0.6):
-    # Stagger 0-2.5s so the 5 parallel agents don't hit Groq's TPM window
-    # all at once. Costs a tiny bit of perceived latency, prevents 429s.
-    time.sleep(random.uniform(0, 2.5))
-
     provider = os.getenv("LLM_PROVIDER", "groq").lower()
 
     if provider == "groq":
