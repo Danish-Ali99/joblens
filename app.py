@@ -262,7 +262,7 @@ if run:
     }
 
     progress = st.progress(0, text="Starting agents...")
-    completed_state: JobLensState = initial.copy()
+    completed_state = initial.copy()
     step_count = 0
     total_steps = 6
 
