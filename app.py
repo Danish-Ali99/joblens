@@ -1,4 +1,9 @@
-"""Streamlit UI for JobLens — AI Job Intelligence Platform."""
+"""Streamlit UI for JobLens — AI Job Intelligence Platform.
+
+Heavy imports (langgraph, langchain, langchain_groq, rank_bm25, pypdf) are
+deferred — they happen only when the user actually uploads a file or clicks
+Analyze. This keeps the initial page render snappy on HF Spaces cold start.
+"""
 import os
 from datetime import datetime
 
@@ -7,10 +12,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from graph.workflow import build_graph
-from graph.state import JobLensState
-from utils.pdf import extract_resume_text
-from utils.retriever import ResumeRetriever
+
+# --- Lazy-loaded helpers (imports happen on first call, cached after) ---
+
+def _extract_resume(uploaded_file) -> str:
+    from utils.pdf import extract_resume_text
+    return extract_resume_text(uploaded_file)
+
+
+def _build_retriever(text: str):
+    from utils.retriever import ResumeRetriever
+    return ResumeRetriever(text)
 
 
 REPO_URL = "https://github.com/Danish-Ali99/joblens"
@@ -80,6 +92,7 @@ def get_secret(name: str, default: str = "") -> str:
 
 @st.cache_resource
 def get_compiled_graph():
+    from graph.workflow import build_graph
     return build_graph()
 
 
@@ -466,7 +479,7 @@ with col_resume:
     )
     if uploaded_file:
         try:
-            resume_text = extract_resume_text(uploaded_file)
+            resume_text = _extract_resume(uploaded_file)
             st.session_state["resume_text"] = resume_text
             st.success(f"Extracted {len(resume_text)} characters from {uploaded_file.name}")
             with st.expander("Preview extracted text"):
@@ -520,7 +533,7 @@ if run:
 
     with st.spinner("Building RAG index for your resume..."):
         try:
-            retriever = ResumeRetriever(resume_text)
+            retriever = _build_retriever(resume_text)
             st.caption(
                 f"📚 RAG index built — {retriever.num_chunks()} resume chunks indexed "
                 "with BM25. Each agent retrieves only the top-k relevant chunks for its role."
@@ -531,7 +544,7 @@ if run:
             )
             retriever = None
 
-    initial: JobLensState = {
+    initial = {
         "resume_text": resume_text,
         "job_description": jd,
         "retriever": retriever,
