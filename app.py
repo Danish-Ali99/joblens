@@ -100,7 +100,7 @@ st.title("🔍 JobLens — AI Job Intelligence")
 st.caption(
     "Upload your resume + a job description. 5 specialist AI agents review them in parallel "
     "using RAG over chunked resume sections, then a Synthesizer compiles a 24-hour action plan. "
-    "Built with LangGraph + LangChain + sentence-transformers + FAISS."
+    "Built with LangGraph + LangChain + BM25 retrieval."
 )
 
 # --- Sidebar ---
@@ -216,9 +216,8 @@ if run:
         try:
             retriever = ResumeRetriever(resume_text)
             st.caption(
-                f"📚 RAG index built — {retriever.num_chunks()} resume chunks embedded "
-                "with sentence-transformers + FAISS. Each agent retrieves only the "
-                "top-k relevant chunks for its role."
+                f"📚 RAG index built — {retriever.num_chunks()} resume chunks indexed "
+                "with BM25. Each agent retrieves only the top-k relevant chunks for its role."
             )
         except Exception as e:
             st.warning(

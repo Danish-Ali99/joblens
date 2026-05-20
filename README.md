@@ -21,9 +21,9 @@ and produces a complete application package in ~5 seconds:
 - A **drafted, ready-to-send cover letter**
 - A **24-hour action plan** synthesizing everything into next steps
 
-Built with **LangGraph**, **LangChain**, a **RAG retrieval layer** (sentence-
-transformers + FAISS), **pypdf**, and **Streamlit** — pluggable LLM backend
-(Groq free tier or OpenAI).
+Built with **LangGraph**, **LangChain**, a **RAG retrieval layer** (BM25 over
+chunked resume sections), **pypdf**, and **Streamlit** — pluggable LLM
+backend (Groq free tier or OpenAI).
 
 ---
 
@@ -31,12 +31,13 @@ transformers + FAISS), **pypdf**, and **Streamlit** — pluggable LLM backend
 
 ![Architecture diagram](architecture.png)
 
-**RAG layer:** The resume is chunked into paragraph-level pieces, embedded
-with `sentence-transformers/all-MiniLM-L6-v2`, and indexed in FAISS. Each
-specialist agent retrieves only the **top-k chunks most relevant to its role**
-(e.g., the Skills Gap agent retrieves skills/education sections, the Cover
-Letter Writer retrieves motivation/summary sections). The job description is
-passed in full.
+**RAG layer:** The resume is chunked into paragraph-level pieces and indexed
+with BM25Okapi (sparse retrieval — standard component of production RAG
+systems alongside or in place of dense embeddings). Each specialist agent
+retrieves only the **top-k chunks most relevant to its role** via a
+role-specific query (e.g., the Skills Gap agent searches for "skills
+technologies tools", the Cover Letter Writer searches for "motivation career
+goals"). The job description is passed in full.
 
 **Multi-agent layer:** Five specialist agents — **Match Analyst, Skills Gap,
 Resume Tailor, Interview Coach, and Cover Letter Writer** — run **in parallel**.
@@ -66,8 +67,7 @@ only triggers after every parent has written to shared state.
 | Orchestration | LangGraph                                         |
 | LLM (free)    | Groq — `llama-3.1-8b-instant`                     |
 | LLM (paid)    | OpenAI — `gpt-4o` / `gpt-4o-mini`                 |
-| Embeddings    | sentence-transformers `all-MiniLM-L6-v2`          |
-| Vector store  | FAISS (cosine similarity)                         |
+| Retrieval     | BM25Okapi (sparse, lexical)                       |
 | Framework     | LangChain                                         |
 | PDF parsing   | pypdf                                             |
 | UI            | Streamlit                                         |
