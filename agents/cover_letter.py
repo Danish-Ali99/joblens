@@ -31,7 +31,7 @@ explanation. Just the letter as it would be pasted into an email."""
 
 
 def cover_letter_agent(state):
-    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=6)
+    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=4)
     llm = get_llm(temperature=0.7)
     response = llm.invoke([
         SystemMessage(content=SYSTEM),

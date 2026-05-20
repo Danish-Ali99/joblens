@@ -39,7 +39,7 @@ Never invent experience the candidate doesn't have."""
 
 
 def tailor_agent(state):
-    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=6)
+    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=4)
     llm = get_llm(temperature=0.5)
     response = llm.invoke([
         SystemMessage(content=SYSTEM),

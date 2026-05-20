@@ -33,7 +33,7 @@ Be specific about exact technologies and concepts. No generic advice."""
 
 
 def gap_agent(state):
-    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=5)
+    resume_context = retrieve_resume_context(state, RETRIEVAL_QUERY, k=3)
     llm = get_llm(temperature=0.5)
     response = llm.invoke([
         SystemMessage(content=SYSTEM),

@@ -8,25 +8,43 @@ only the resume chunks most relevant to its role — instead of stuffing the
 full resume into every prompt.
 """
 import os
+import random
+import time
 
-MAX_TOKENS = 800
+MAX_TOKENS = 500
 
 
 def get_llm(temperature: float = 0.6):
+    # Stagger 0-2.5s so the 5 parallel agents don't hit Groq's TPM window
+    # all at once. Costs a tiny bit of perceived latency, prevents 429s.
+    time.sleep(random.uniform(0, 2.5))
+
     provider = os.getenv("LLM_PROVIDER", "groq").lower()
 
     if provider == "groq":
         from langchain_groq import ChatGroq
-        model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-        return ChatGroq(model=model, temperature=temperature, max_tokens=MAX_TOKENS)
-
-    if provider == "openai":
+        base = ChatGroq(
+            model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+            temperature=temperature,
+            max_tokens=MAX_TOKENS,
+        )
+    elif provider == "openai":
         from langchain_openai import ChatOpenAI
-        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        return ChatOpenAI(model=model, temperature=temperature, max_tokens=MAX_TOKENS)
+        base = ChatOpenAI(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            temperature=temperature,
+            max_tokens=MAX_TOKENS,
+        )
+    else:
+        raise ValueError(
+            f"Unknown LLM_PROVIDER={provider!r}. Use 'groq' or 'openai'."
+        )
 
-    raise ValueError(
-        f"Unknown LLM_PROVIDER={provider!r}. Use 'groq' or 'openai'."
+    # Retry once with exponential-jitter backoff on transient 429 / rate-limit
+    # responses — important for Groq's free tier when 5 agents fan out.
+    return base.with_retry(
+        stop_after_attempt=2,
+        wait_exponential_jitter=True,
     )
 
 

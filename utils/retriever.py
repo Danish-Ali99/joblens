@@ -19,22 +19,55 @@ def _get_model():
     return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 
-def chunk_text(text: str, max_chars: int = 500) -> List[str]:
-    """Split a resume into paragraph chunks, merging short ones up to ~max_chars."""
+def chunk_text(text: str, max_chars: int = 400) -> List[str]:
+    """Split a resume into chunks of ~max_chars.
+
+    Strategy: prefer paragraph boundaries (double newline). If the source
+    text was extracted without paragraph breaks — common with pypdf on
+    LaTeX-generated resumes — fall back to character-based chunking with
+    sentence-boundary preference and short overlap.
+    """
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-    chunks: List[str] = []
-    current = ""
-    for p in paragraphs:
-        if not current:
-            current = p
-        elif len(current) + len(p) + 2 < max_chars:
-            current = current + "\n\n" + p
-        else:
+
+    if len(paragraphs) > 1:
+        chunks: List[str] = []
+        current = ""
+        for p in paragraphs:
+            if not current:
+                current = p
+            elif len(current) + len(p) + 2 < max_chars:
+                current = current + "\n\n" + p
+            else:
+                chunks.append(current)
+                current = p
+        if current:
             chunks.append(current)
-            current = p
-    if current:
-        chunks.append(current)
-    return chunks or [text]
+        if len(chunks) > 1:
+            return chunks
+
+    return _chunk_by_chars(text, max_chars, overlap=80)
+
+
+def _chunk_by_chars(text: str, chunk_size: int, overlap: int = 80) -> List[str]:
+    """Character-based chunker with sentence-boundary preference and overlap."""
+    if len(text) <= chunk_size:
+        return [text]
+
+    chunks: List[str] = []
+    start = 0
+    while start < len(text):
+        end = min(start + chunk_size, len(text))
+        if end < len(text):
+            for sep in ("\n", ". ", "! ", "? ", "; "):
+                idx = text.rfind(sep, max(start, end - 100), end)
+                if idx > start:
+                    end = idx + len(sep)
+                    break
+        chunks.append(text[start:end].strip())
+        if end >= len(text):
+            break
+        start = max(end - overlap, start + 1)
+    return [c for c in chunks if c]
 
 
 class ResumeRetriever:
